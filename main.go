@@ -33,6 +33,7 @@ type Project struct {
 	FormatStart  string
 	FormatEnd    string
 	Author       string
+	UserID       int
 }
 
 type User struct {
@@ -165,33 +166,53 @@ func main() {
 }
 
 func home(c echo.Context) error {
-	data, _ := connection.Conn.Query(context.Background(), "SELECT tb_proyek.id, tb_proyek.name, start_date, end_date, duration, description, tech1, tech2, tech3, tech4, image, tb_users.name AS author FROM tb_proyek JOIN tb_users ON tb_proyek.authorid = tb_users.id ORDER BY tb_proyek.id DESC")
-
-	fmt.Println(data)
-	var result []Project
-	for data.Next() {
-		var each = Project{}
-
-		err := data.Scan(&each.Id, &each.ProjectName, &each.StartDate, &each.EndDate, &each.Duration, &each.Description, &each.Tech1, &each.Tech2, &each.Tech3, &each.Tech4, &each.Image, &each.Author)
-		if err != nil {
-			fmt.Println(err.Error())
-			return c.JSON(http.StatusInternalServerError, map[string]string{"Message": err.Error()})
-		}
-		fmt.Println(each)
-
-		each.FormatStart = each.StartDate.Format("2 January 2006")
-		each.FormatEnd = each.EndDate.Format("2 January 2006")
-
-		result = append(result, each)
-	}
-
 	sess, _ := session.Get("session", c)
+	var result []Project
 
 	if sess.Values["isLogin"] != true {
 		userData.IsLogin = false
+		data, _ := connection.Conn.Query(context.Background(), "SELECT tb_proyek.id, tb_proyek.name, start_date, end_date, duration, description, tech1, tech2, tech3, tech4, image, tb_users.name AS author FROM tb_proyek JOIN tb_users ON tb_proyek.authorid = tb_users.id ORDER BY tb_proyek.id DESC")
+		fmt.Println(data)
+
+		for data.Next() {
+			var each = Project{}
+
+			err := data.Scan(&each.Id, &each.ProjectName, &each.StartDate, &each.EndDate, &each.Duration, &each.Description, &each.Tech1, &each.Tech2, &each.Tech3, &each.Tech4, &each.Image, &each.Author)
+			if err != nil {
+				fmt.Println(err.Error())
+				return c.JSON(http.StatusInternalServerError, map[string]string{"Message": err.Error()})
+			}
+			fmt.Println(each)
+
+			each.FormatStart = each.StartDate.Format("2 January 2006")
+			each.FormatEnd = each.EndDate.Format("2 January 2006")
+
+			result = append(result, each)
+		}
+
 	} else {
 		userData.IsLogin = sess.Values["isLogin"].(bool)
 		userData.Name = sess.Values["name"].(string)
+		userId := sess.Values["id"]
+		data, _ := connection.Conn.Query(context.Background(), "SELECT tb_proyek.id, tb_proyek.name, start_date, end_date, duration, description, tech1, tech2, tech3, tech4, image, tb_users.name AS author FROM tb_proyek JOIN tb_users ON tb_proyek.authorid = tb_users.id WHERE tb_proyek.authorid=$1 ORDER BY tb_proyek.id DESC", userId)
+
+		fmt.Println(data)
+		for data.Next() {
+			var each = Project{}
+
+			err := data.Scan(&each.Id, &each.ProjectName, &each.StartDate, &each.EndDate, &each.Duration, &each.Description, &each.Tech1, &each.Tech2, &each.Tech3, &each.Tech4, &each.Image, &each.Author)
+			if err != nil {
+				fmt.Println(err.Error())
+				return c.JSON(http.StatusInternalServerError, map[string]string{"Message": err.Error()})
+			}
+			fmt.Println(each)
+
+			each.FormatStart = each.StartDate.Format("2 January 2006")
+			each.FormatEnd = each.EndDate.Format("2 January 2006")
+
+			result = append(result, each)
+		}
+
 	}
 
 	projects := map[string]interface{}{
